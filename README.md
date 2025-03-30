@@ -4,7 +4,7 @@
 
 **Blackbox** is a fast, minimal logging library for C, inspired by aircraft flight recorders — log everything!
 
-> **Note**  
+> [!WARN] 
 > This library is **not** cross-platform — it is built and tested exclusively on **macOS**.
 
 ---
