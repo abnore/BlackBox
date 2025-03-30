@@ -57,23 +57,8 @@ To use Blackbox in your own C project:
 ```c
   init_log(NULL, true);
   INFO("Logger is live!");
+  TRACE("This is a trace message!");
   shutdown_log();
-```
-
-
-
-## Example Usage
-
-```c
-#include "logger.h"
-
-int main(void) {
-    init_log(NULL, true); // log to stdout with color
-    INFO("App started!");
-    DEBUG("This is a debug message.");
-    TRACE("This is a trace message.");
-    shutdown_log();
-}
 ```
 
 ---
@@ -91,7 +76,7 @@ int main(void) {
 ## Use with Makefile
 
 You can configure log levels dynamically in your Makefile using the LOG_LEVELS environment variable.
-This is useful if you want to run your program with different verbosity levels during development, testing, 
+This is useful if you want to run your program with different verbosity levels during development, testing,
 or release builds — without recompiling your code.
 Just prefix your run command with LOG_LEVELS=... like this:
 
@@ -202,7 +187,6 @@ LOG_LEVELS=-debug,-trace ./your_app
 log_type init_log(const char* filepath, bool enable_colors);
 void shutdown_log(void);
 
-void configure_log_levels_from_env(void);
 void log_set_color_output(bool enabled);
 
 void log_enable_level(log_level level);
@@ -235,5 +219,4 @@ BUILD_ASSERT(sizeof(my_struct) == 32, "Unexpected struct size");
 
 ---
 
-**Blackbox** — because sometimes, the logs are the last thing that survives.
-Designed for clarity, speed, and practical debugging.
+**Blackbox** — sometimes, the logs are the only thing that survives.
