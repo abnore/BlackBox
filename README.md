@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/9457301e-1361-453a-837f-a4d0d6e13252" width="600" alt="Canopy Logo" />
+  <img src="https://github.com/user-attachments/assets/00e305bc-7d20-4af1-a3e5-c794c76b60b5" width="600" alt="Canopy Logo" />
 </p>
 
 
