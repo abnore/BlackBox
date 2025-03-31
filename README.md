@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/cc8d4ba4-4fbd-4985-b65f-2ecec1e54df4" width="400" alt="Canopy Logo" />
+  <img src="https://github.com/user-attachments/assets/9457301e-1361-453a-837f-a4d0d6e13252" width="600" alt="Canopy Logo" />
 </p>
+
 
 **Blackbox** is a fast, minimal logging library for C, inspired by aircraft flight recorders — log everything!
 
@@ -110,16 +111,16 @@ clean:
 
 # Run with specific logging profiles
 run-all:
-	LOG_LEVELS=ALL make run
+	LOG_LEVELS=ALL run
 
 run-info:
-	LOG_LEVELS=+info,+warn make run
+	LOG_LEVELS=+info,+warn run
 
 run-debug:
-	LOG_LEVELS=+debug,-trace make run
+	LOG_LEVELS=+debug,-trace run
 
 run-fatal:
-	LOG_LEVELS=NONE,+fatal make run
+	LOG_LEVELS=NONE,+fatal run
 ```
 Each target sets a different logging configuration before launching your program.
 This way, you can toggle what gets logged just by choosing a different make target:
