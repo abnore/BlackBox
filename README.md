@@ -1,223 +1,225 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/00e305bc-7d20-4af1-a3e5-c794c76b60b5" width="600" alt="Canopy Logo" />
+  <img src="https://github.com/user-attachments/assets/00e305bc-7d20-4af1-a3e5-c794c76b60b5" width="600" alt="Blackbox Logo" />
 </p>
 
+# Blackbox
 
-**Blackbox** is a fast, minimal logging library for C, inspired by aircraft flight recorders — log everything!
+**Blackbox** is a fast, minimal logging library for C — inspired by aircraft flight recorders: log everything.
 
 > [!NOTE]
-> This library is **not** cross-platform — it is built and tested exclusively on **macOS**.
+> Built and tested exclusively on **macOS (POSIX)**.  
+> Uses `pthread`, `unistd`, and Mach-O (`_NSGetExecutablePath`) APIs.
 
 ---
 
 ## Features
 
--  Clean, zero-dependency design (Pure C - standard library only)
--  Color-coded terminal output (ANSI-aware)
--  Runtime log level control via `LOG_LEVELS=...`
--  Optional log-to-file output
--  Custom assertion & build-time checks
--  Thread-safe output
--  Designed for debugging, safe for production
+- Pure C (`logger.h` / `logger.c`)
+- Color-coded terminal output (ANSI-aware, auto-disabled for files)
+- Runtime log level control via `LOG_LEVELS=...`
+- Optional **file logging** with timestamped filenames + `logs/latest.log` symlink
+- Optional **stderr redirection** to its own log file
+- Thread-safe via `pthread_mutex`
+- Custom runtime and compile-time assertions (`ASSERT`, `BUILD_ASSERT`)
 
 ---
+
 ## Getting Started
 
-### 1. Clone the repository
+### 1) Clone
 
 ```sh
 git clone https://github.com/abnore/BlackBox.git
 cd BlackBox
 ```
-### 2. Build your project
+
+### 2) Build
 
 If you’re using the example Makefile:
 ```sh
 make
 ```
 
-### 3. Run with logging
+### 3) Run with different log levels
 ```sh
-make run-all      # Logs everything (default)
-make run-info     # Logs only info and warnings
-make run-debug    # Debug logs, trace disabled
-make run-fatal    # Only critical fatal errors
+make run-all
+make run-info
+make run-debug
+make run-fatal
 ```
-Or run directly
+
+Or run directly:
 ```sh
 LOG_LEVELS=+debug ./bin/test
 ```
-### 4. Include in your own project
-To use Blackbox in your own C project:
-- Copy logger.h and logger.c into your source tree
-- Include it in your code:
+
+### 4) Integrate in your own project
+
+Copy `logger.h` and `logger.c` into your source tree and include them:
+
 ```c
 #include "logger.h"
-```
-- initialize and shutdown
-```c
-  init_log(NULL, true);
-  INFO("Logger is live!");
-  TRACE("This is a trace message!");
-  shutdown_log();
+
+int main(void) {
+    // To stdout with colors if the terminal supports it; stderr stays on terminal
+    init_log(NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL);
+
+    INFO("Logger is live!");
+    DEBUG("Debug value x=%d", 42);
+
+    // Example: log to file and redirect stderr to a separate error log file
+    // init_log(LOG, NO_COLORS, STDERR_TO_LOG);
+
+    shutdown_log();
+}
 ```
 
 ---
 
-## Available Log Levels
+## Log Levels
 
-- `FATAL` – unrecoverable error, must exit
-- `ERROR` – something went wrong, but can recover
-- `WARN` – unexpected but non-fatal
-- `INFO` – general application status
-- `DEBUG` – dev-time debugging details
-- `TRACE` – high-volume diagnostic detail
+| Level  | Description                          |
+|--------|--------------------------------------|
+| FATAL  | Unrecoverable error; program aborts  |
+| ERROR  | Recoverable error; operation failed  |
+| WARN   | Non-fatal anomaly                    |
+| INFO   | General status / progress            |
+| DEBUG  | Developer debug information          |
+| TRACE  | Verbose internal tracing             |
 
 ---
-## Use with Makefile
 
-You can configure log levels dynamically in your Makefile using the LOG_LEVELS environment variable.
-This is useful if you want to run your program with different verbosity levels during development, testing,
-or release builds — without recompiling your code.
-Just prefix your run command with LOG_LEVELS=... like this:
+## Where Logs Go
 
-```makefile
-# Compiler and flags
-CC = clang
-CFLAGS = -I. -Ilogger
+When file logging is enabled (`init_log(LOG, ...)`), Blackbox writes to:
 
-# Files and Directories
-SRC = src/main.c logger/logger.c
-OBJ = $(SRC:.c=.o) $(SRC:.m=.o)
-OUT = bin/test
-
-# Default log level
-LOG_LEVELS ?= ALL
-
-# Default target
-all: $(OUT)
-
-$(OUT): $(OBJ)
-	$(CC) $(OBJ) $(LDFLAGS) -o $(OUT)
-
-# Run the program with LOG_LEVELS
-run:
-	@echo "Running with LOG_LEVELS='$(LOG_LEVELS)'..."
-	@LOG_LEVELS="$(LOG_LEVELS)" ./$(OUT)
-
-# Clean build artifacts
-clean:
-	rm -f $(OBJ) $(OUT)
-
-# Run with specific logging profiles
-run-all:
-	LOG_LEVELS=ALL run
-
-run-info:
-	LOG_LEVELS=+info,+warn run
-
-run-debug:
-	LOG_LEVELS=+debug,-trace run
-
-run-fatal:
-	LOG_LEVELS=NONE,+fatal run
 ```
-Each target sets a different logging configuration before launching your program.
-This way, you can toggle what gets logged just by choosing a different make target:
-
-```sh
-make run-info
-make run-all
+logs/
+├── 2025-10-19_22-15-03-yourapp.log
+├── latest.log                       → symlink to most recent file
+└── error-2025-10-19_22-15-03.log    (if STDERR_TO_LOG)
 ```
-<details>
-<summary><strong> Examples <code>LOG_LEVELS</code></strong></summary>
 
-You can configure log filtering dynamically via the environment variable `LOG_LEVELS`.
+The `logs/` directory is created automatically. Colors are disabled for file output.
 
-### Syntax
+---
+
+## Environment Variable: `LOG_LEVELS`
+
+Filter verbosity at runtime without recompiling.
 
 ```sh
 LOG_LEVELS=+DEBUG,-TRACE ./your_app
 ```
-You may also use:
 
-- `ALL` – enable all levels
-- `NONE` – disable all
+**Syntax & rules**
+- `ALL` – enable all levels  
+- `NONE` – disable all  
+- `+LEVEL` – enable a level  
+- `-LEVEL` – disable a level  
+- Comma-separated, case-insensitive  
+- If neither `ALL` nor `NONE` is used, the **first `+LEVEL` clears** all levels before enabling it.
 
-Log level names are **case-insensitive**.
-
-- Use `+LEVEL` to enable, `-LEVEL` to disable
-- Comma-separated list: `+INFO,+DEBUG,-TRACE`
-- If no `ALL` or `NONE` is used, the first explicit level disables the rest
-- Mix and match freely!
-
-### Examples
-Multiple versions of commands
-
+**Examples**
 ```sh
-# Enable all levels (default)
-LOG_LEVELS=ALL ./your_app
-
-# Disables all levels, no logging
-LOG_LEVELS=none ./your_app
-
-# Enable only INFO and DEBUG
-LOG_LEVELS=none,+info,+debug ./your_app
-LOG_LEVELS=+info,+debug ./your_app
-
-# Enable all except TRACE
-LOG_LEVELS=ALL,-trace ./your_app
-LOG_LEVELS=-trace ./your_app
-
-# Disable all except FATAL
-LOG_LEVELS=NONE,+fatal ./your_app
-LOG_LEVELS=+fatal ./your_app
-
-# Disable just DEBUG and TRACE
-LOG_LEVELS=ALL,-debug,-trace ./your_app
-LOG_LEVELS=-debug,-trace ./your_app
+LOG_LEVELS=ALL ./app                  # everything
+LOG_LEVELS=-debug,-trace ./app        # all except DEBUG, TRACE
+LOG_LEVELS=+info,+debug ./app         # only INFO and DEBUG
+LOG_LEVELS=NONE,+fatal ./app          # only FATAL
 ```
-
-</details>
 
 ---
 
 ## API Overview
 
 ```c
-log_type init_log(const char* filepath, bool enable_colors);
-void shutdown_log(void);
+// Initialization and shutdown
+log_type init_log(log_mode enable_log,
+                  color_mode enable_colors,
+                  stderr_mode stderr_behavior);
+void     shutdown_log(void);
 
+// Color control (forces on/off; bypasses auto-tty detection)
 void log_set_color_output(bool enabled);
 
-void log_enable_level(log_level level);
-void log_disable_level(log_level level);
+// Runtime level control (bitmask)
+void log_enable_level(log_level level);   // inline in header
+void log_disable_level(log_level level);  // inline in header
 bool log_level_is_enabled(log_level level);
+
+// Logging macros (capture file/line/function automatically)
+FATAL("message: %s", why);
+ERROR("failed: %d", code);
+WARN("unexpected: %s", detail);
+INFO("started");
+DEBUG("x=%d", x);
+TRACE("loop i=%d", i);
 ```
 
 ---
 
-### Assertion Macros
-
-**Blackbox** includes custom assertion utilities to help catch bugs and misbehaviors early:
+## Assertions
 
 ```c
-ASSERT(condition, "Something went wrong");
+// Logs a FATAL line with file/line and custom message, then **aborts** the process.
+ASSERT(ptr != NULL, "ptr must not be NULL (id=%d)", id);
+
+// Compile-time check using _Static_assert
+BUILD_ASSERT(sizeof(MyHdr) == 32, "MyHdr must be 32 bytes");
 ```
-
-- Logs a **FATAL** message with file, line, and custom message if the condition fails.
-- Does **not abort** the program — lets you fail gracefully with logs.
-- Useful for runtime checks during development.
-
-You also get:
-
-```c
-BUILD_ASSERT(sizeof(my_struct) == 32, "Unexpected struct size");
-```
-
-- A **compile-time** check using `_Static_assert`
-- Ideal for validating assumptions about struct layouts or constants
 
 ---
 
-**Blackbox** — sometimes, the logs are the only thing that survives.
+## Makefile (example)
+
+```makefile
+.PHONY: all run run-all run-info run-debug run-fatal clean
+
+CC      = clang
+CFLAGS  = -Wall -Wextra -O2 -I.
+LDFLAGS = -pthread
+
+SRC = src/main.c logger/logger.c
+OBJ = $(SRC:.c=.o)
+OUT = bin/test
+
+# Default log level mask for 'make run'
+LOG_LEVELS ?= ALL
+
+all: $(OUT)
+
+$(OUT): $(OBJ)
+	@mkdir -p $(dir $(OUT))
+	$(CC) $(OBJ) $(LDFLAGS) -o $(OUT)
+
+run:
+	@echo "Running with LOG_LEVELS='$(LOG_LEVELS)'..."
+	@LOG_LEVELS="$(LOG_LEVELS)" ./$(OUT)
+
+clean:
+	rm -f $(OBJ) $(OUT)
+
+run-all:   ; $(MAKE) run LOG_LEVELS=ALL
+run-info:  ; $(MAKE) run LOG_LEVELS=+info,+warn
+run-debug: ; $(MAKE) run LOG_LEVELS=+debug,-trace
+run-fatal: ; $(MAKE) run LOG_LEVELS=NONE,+fatal
+```
+
+---
+
+## Color Behavior
+
+- `LOG_COLORS` enables ANSI colors **only** if `stdout` is a TTY (`isatty`).
+- File outputs are plain text (no color).
+- You can force color on/off at runtime with `log_set_color_output(bool)`.
+
+---
+
+## Platform
+
+- Target: **macOS**  
+- Depends on: `pthread`, `unistd`, `sys/stat`, `libgen`, `mach-o/dyld.h`
+
+> Not cross-platform as-is. Linux/Windows ports would need replacements for Mach-O path discovery and minor FS bits.
+
+---
