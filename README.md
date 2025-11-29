@@ -7,14 +7,14 @@
 **Blackbox** is a fast, minimal logging library for C — inspired by aircraft flight recorders: log everything.
 
 > [!NOTE]
-> Built and tested exclusively on **macOS (POSIX)**.  
+> Built and tested exclusively on **macOS (POSIX)**.
 > Uses `pthread`, `unistd`, and Mach-O (`_NSGetExecutablePath`) APIs.
 
 ---
 
 ## Features
 
-- Pure C (`logger.h` / `logger.c`)
+- Pure C (`blackbox.h` / `blackbox.c`)
 - Color-coded terminal output (ANSI-aware, auto-disabled for files)
 - Runtime log level control via `LOG_LEVELS=...`
 - Optional **file logging** with timestamped filenames + `logs/latest.log` symlink
@@ -55,10 +55,12 @@ LOG_LEVELS=+debug ./bin/test
 
 ### 4) Integrate in your own project
 
-Copy `logger.h` and `logger.c` into your source tree and include them:
+Copy `blackbox.h` and `blackbox.c` into your source tree and include them, or follow
+the install steps in `install.md` to get
 
 ```c
-#include "logger.h"
+// #include "blackbox.h" // if included in the source tree
+#include <blackbox.h>
 
 int main(void) {
     // To stdout with colors if the terminal supports it; stderr stays on terminal
@@ -113,11 +115,11 @@ LOG_LEVELS=+DEBUG,-TRACE ./your_app
 ```
 
 **Syntax & rules**
-- `ALL` – enable all levels  
-- `NONE` – disable all  
-- `+LEVEL` – enable a level  
-- `-LEVEL` – disable a level  
-- Comma-separated, case-insensitive  
+- `ALL` – enable all levels
+- `NONE` – disable all
+- `+LEVEL` – enable a level
+- `-LEVEL` – disable a level
+- Comma-separated, case-insensitive
 - If neither `ALL` nor `NONE` is used, the **first `+LEVEL` clears** all levels before enabling it.
 
 **Examples**
@@ -137,7 +139,7 @@ LOG_LEVELS=NONE,+fatal ./app          # only FATAL
 log_type init_log(log_mode enable_log,
                   color_mode enable_colors,
                   stderr_mode stderr_behavior);
-void     shutdown_log(void);
+void shutdown_log(void);
 
 // Color control (forces on/off; bypasses auto-tty detection)
 void log_set_color_output(bool enabled);
@@ -170,16 +172,16 @@ BUILD_ASSERT(sizeof(MyHdr) == 32, "MyHdr must be 32 bytes");
 
 ---
 
-## Makefile (example)
+## Makefile (example for system installed blackbox)
 
 ```makefile
 .PHONY: all run run-all run-info run-debug run-fatal clean
 
 CC      = clang
 CFLAGS  = -Wall -Wextra -O2 -I.
-LDFLAGS = -pthread
+LDFLAGS = -pthread -lblackbox
 
-SRC = src/main.c logger/logger.c
+SRC = src/main.c
 OBJ = $(SRC:.c=.o)
 OUT = bin/test
 
@@ -217,7 +219,7 @@ run-fatal: ; $(MAKE) run LOG_LEVELS=NONE,+fatal
 
 ## Platform
 
-- Target: **macOS**  
+- Target: **macOS**
 - Depends on: `pthread`, `unistd`, `sys/stat`, `libgen`, `mach-o/dyld.h`
 
 > Not cross-platform as-is. Linux/Windows ports would need replacements for Mach-O path discovery and minor FS bits.
