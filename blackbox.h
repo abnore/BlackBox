@@ -10,9 +10,9 @@
 extern "C" {
 #endif
 
-//----------------------------------------
+//========================================
 // Types
-//----------------------------------------
+//========================================
 typedef enum { NO_LOG = 0, LOG = 1 } log_mode;
 typedef enum { NO_COLORS = 0, LOG_COLORS = 1 } color_mode;
 typedef enum { STDERR_TO_TERMINAL = 0, STDERR_TO_LOG = 1 } stderr_mode;
@@ -47,9 +47,9 @@ typedef enum {
     LOG_ALREADY_INIT    /**< init_log was already called */
 } log_type;
 
-//----------------------------------------
+//========================================
 // Runtime Log Configuration
-//----------------------------------------
+//========================================
 
 /**
  * @brief Bitmask of enabled log levels.
@@ -61,9 +61,9 @@ typedef enum {
 extern uint32_t log_levels_enabled;
 
 
-//----------------------------------------
+//========================================
 // Logger API
-//----------------------------------------
+//========================================
 
 /**
  * @brief Initializes the logger system.
