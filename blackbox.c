@@ -1,23 +1,29 @@
-// Standard library includes for system calls and I/O
-#include <stdlib.h>     // getenv, strdup, malloc, free
-#include <string.h>     // strtok, strcasecmp
-#include <stdio.h>      // fprintf, fopen, stdout, stderr
-#include <stdarg.h>     // va_list, va_start, va_end, vsnprintf
-#include <stdbool.h>    // bool type
-#include <time.h>       // time, localtime, strftime
-#include <unistd.h>     // isatty, fileno
-#include <pthread.h>    // pthread_mutex_t for thread safety
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <mach-o/dyld.h>   // for _NSGetExecutablePath
-#include <libgen.h>        // for basename
-#include <limits.h>        // for PATH_MAX
+//=============================================================
+// Standard library and POSIX includes used by the logger
+//=============================================================
 
-#include "logger.h"
+#include <stdlib.h>         // getenv, strdup, malloc, free
+#include <string.h>         // strtok, strcasecmp, strlen
+#include <stdio.h>          // fprintf, fopen, FILE, stderr, stdout
+#include <stdarg.h>         // va_list, va_start, va_end, vsnprintf
+#include <stdbool.h>        // bool type
+#include <time.h>           // time, localtime, strftime
+#include <unistd.h>         // isatty, fileno, unlink, symlink
+#include <pthread.h>        // pthread_mutex_t, pthread_mutex_lock/unlock
+#include <sys/stat.h>       // mkdir, stat
+#include <sys/types.h>      // mode_t, off_t (indirectly required by mkdir/stat)
+#include <mach-o/dyld.h>    // _NSGetExecutablePath (macOS)
+#include <libgen.h>         // basename
+#include <limits.h>         // PATH_MAX
 
-//-------------------------------------------------------------
+//=============================================================
+// Library interface (header)
+//=============================================================
+#include "blackbox.h"
+
+//=============================================================
 // Internal state & synchronization
-//-------------------------------------------------------------
+//=============================================================
 
 static pthread_mutex_t logger_mutex = PTHREAD_MUTEX_INITIALIZER; // Ensures thread-safe logging
 static bool logger_initialized = false;                          // Prevent multiple init_log() calls
@@ -59,9 +65,9 @@ static const char *get_program_name(void) {
         return "unknown_program";
     }
 }
-//-------------------------------------------------------------
+//=============================================================
 // Public API
-//-------------------------------------------------------------
+//=============================================================
 
 // Initializes the logger system.
 // Only runs once safely even across threads.
@@ -153,9 +159,9 @@ void log_set_color_output(bool enabled)
     log_colors_enabled = enabled;
 }
 
-//-------------------------------------------------------------
+//=============================================================
 // Core logging function
-//-------------------------------------------------------------
+//=============================================================
 
 void log_output_ext(log_level level, const char* file, int line, const char* func, const char* msg, ...)
 {
@@ -206,9 +212,9 @@ void log_output_ext(log_level level, const char* file, int line, const char* fun
     pthread_mutex_unlock(&logger_mutex);
 }
 
-//-------------------------------------------------------------
+//=============================================================
 // Assertion support (crashing)
-//-------------------------------------------------------------
+//=============================================================
 
 void report_assertion_failure(const char* expression, const char* file, int line, const char* fmt, ...)
 {
@@ -223,9 +229,9 @@ void report_assertion_failure(const char* expression, const char* file, int line
     va_end(args);
 }
 
-//-------------------------------------------------------------
+//=============================================================
 // Environment variable parsing: LOG_LEVELS=+INFO,-TRACE,...
-//-------------------------------------------------------------
+//=============================================================
 
 void configure_log_levels_from_env(void)
 {
