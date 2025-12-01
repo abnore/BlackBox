@@ -1,5 +1,5 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef BLACKBOX_H
+#define BLACKBOX_H
 
 
 #include <stdint.h>   // uint32_t
@@ -137,4 +137,4 @@ void report_assertion_failure(const char* expr_str, const char* file, int line, 
 #ifdef __cplusplus
 }
 #endif
-#endif // LOGGER_H
+#endif // BLACKBOX_H
