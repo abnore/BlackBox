@@ -106,7 +106,7 @@ void shutdown_log(void);
 void log_set_color_output(bool enabled);
 
 /* Runtime log level control
-/* ------------------------------------------------------- */
+ * ------------------------------------------------------- */
 static inline void log_enable_level(log_level level) {
     log_levels_enabled |= level;
 }
