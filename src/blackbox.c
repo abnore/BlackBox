@@ -24,11 +24,13 @@
 //=============================================================
 // Internal state & synchronization
 //=============================================================
-
-static pthread_mutex_t logger_mutex = PTHREAD_MUTEX_INITIALIZER; // Ensures thread-safe logging
-static bool logger_initialized = false;                          // Prevent multiple init_log() calls
-
+//
+static bool logger_initialized = false;  // Prevent multiple init_log() calls
 static void configure_log_levels_from_env(void); // Internal only — parsed by init_log()
+                                                                 //
+static pthread_mutex_t logger_mutex = PTHREAD_MUTEX_INITIALIZER; // Ensures thread-safe logging
+#define LOCK()   pthread_mutex_lock(&logger_mutex)
+#define UNLOCK() pthread_mutex_unlock(&logger_mutex)
 
 FILE* log_output_stream = NULL;                  // Destination: stdout, stderr, or file
 uint32_t log_levels_enabled = LOG_LEVEL_ALL;     // Bitmask for enabled log levels
@@ -56,7 +58,8 @@ static inline void get_log_time(char *buffer, size_t size, const char *format) {
 }
 
 // helper to get basename of current executable
-static const char *get_program_name(void) {
+static const char *get_program_name(void)
+{
     static char prog_name[PATH_MAX];
     uint32_t size = sizeof(prog_name);
     if (_NSGetExecutablePath(prog_name, &size) == 0) {
@@ -73,10 +76,10 @@ static const char *get_program_name(void) {
 // Only runs once safely even across threads.
 log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode stderr_behavior)
 {
-    pthread_mutex_lock(&logger_mutex);
+    LOCK();
 
     if (logger_initialized) {
-        pthread_mutex_unlock(&logger_mutex);
+        UNLOCK();
         fprintf(stderr, "[LOGGER] init_log() called more than once — skipping\n");
         return LOG_ALREADY_INIT;
     }
@@ -103,7 +106,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
     if (!enable_log) {
         log_output_stream = stdout;
         log_colors_enabled = enable_colors && isatty(fileno(stdout));
-        pthread_mutex_unlock(&logger_mutex);
+        UNLOCK();
         return LOG_STDOUT;
     }
 
@@ -118,7 +121,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
     log_output_stream = fopen(log_path, "w");
     if (!log_output_stream) {
         fprintf(stderr, "[LOGGER ERROR] Failed to open log file: %s\n", log_path);
-        pthread_mutex_unlock(&logger_mutex);
+        UNLOCK();
         return LOG_ERROR;
     }
 
@@ -129,14 +132,15 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
     symlink(log_path + strlen(log_dir) + 1, symlink_path);  // point to relative target
 
     log_colors_enabled = false;
-    pthread_mutex_unlock(&logger_mutex);
+
+    UNLOCK();
     return LOG_FILE;
 }
 
 // Gracefully shuts down logger and closes any file
 void shutdown_log(void)
 {
-    pthread_mutex_lock(&logger_mutex);
+    LOCK();
 
     if (log_output_stream) {
         fflush(log_output_stream);
@@ -149,7 +153,7 @@ void shutdown_log(void)
         log_output_stream = NULL;
     }
     log_levels_enabled = LOG_LEVEL_NONE;
-    pthread_mutex_unlock(&logger_mutex);
+    UNLOCK();
 }
 
 // Manually enable/disable color output
@@ -168,7 +172,7 @@ void log_output_ext(log_level level, const char* file, int line, const char* fun
     // Quick filter to skip if this level is off
     if (!(log_levels_enabled & level)) return;
 
-    pthread_mutex_lock(&logger_mutex);
+    LOCK();
 
     if (!log_output_stream)
         log_output_stream = stdout;
@@ -198,18 +202,18 @@ void log_output_ext(log_level level, const char* file, int line, const char* fun
 
     // Print final formatted message with optional color
     fprintf(log_output_stream,
-        "%s[%s] [%s] %s:%d (%s): %s%s\n",
+        "%s%s [%s] %s:%s():%d => %s%s\n",
         log_colors_enabled ? level_colors[index] : "",
         timestamp,
         level_strings[index],
         file,
-        line,
         func,
+        line,
         user_msg,
         log_colors_enabled ? color_reset : "");
 
     fflush(log_output_stream);
-    pthread_mutex_unlock(&logger_mutex);
+    UNLOCK();
 }
 
 //=============================================================

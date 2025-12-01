@@ -1,0 +1,50 @@
+name: macOS
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-macos:
+    name: macOS Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        run: |
+          echo "=== macOS version ==="
+          sw_vers
+          echo "=== clang version ==="
+          clang --version
+
+      - name: Build BlackBox (Makefile)
+        run: make
+
+      - name: Install BlackBox system-wide
+        run: sudo make install
+
+      - name: Build test program using system-wide BlackBox
+        run: |
+          cat > test.c << 'EOF'
+          #include <blackbox.h>
+
+          int main(void) {
+              init_log(NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL);
+
+              INFO("Hello from CI");
+              DEBUG("x = %d", 42);
+
+              shutdown_log();
+              return 0;
+          }
+          EOF
+
+          clang test.c -lblackbox -o test
+
+      - name: Run test program
+        run: ./test

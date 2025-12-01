@@ -2,6 +2,9 @@
   <img src="https://github.com/user-attachments/assets/00e305bc-7d20-4af1-a3e5-c794c76b60b5" width="600" alt="BlackBox Logo" />
 </p>
 
+[![macOS Build](https://github.com/abnore/BlackBox/actions/workflows/macos-build.yml/badge.svg)](https://github.com/abnore/BlackBox/actions/workflows/macos-build.yml)
+[![Release](https://img.shields.io/github/release/abnore/BlackBox.svg)](https://github.com/abnore/BlackBox/releases/latest)
+
 # BlackBox
 
 **BlackBox** is a fast, minimal logging library for C — inspired by aircraft flight recorders: log everything.
@@ -14,116 +17,177 @@
 
 ## Features
 
-- Pure C (`blackbox.h` / `blackbox.c`)
-- Color-coded terminal output (ANSI-aware, auto-disabled for files)
-- Runtime log level control via `LOG_LEVELS=...`
-- Optional **file logging** with timestamped filenames + `logs/latest.log`
-- Optional **stderr redirection** to its own log file
+- Zero external dependencies and extremely easy to integrate
+- Pure C (`blackbox.h` / `src/blackbox.c`)
+- Color-coded terminal output (TTY / ANSI-aware)
+- Runtime log-level control via `LOG_LEVELS=...`
+- Optional **file logging** (`logs/<timestamp>.log` + `logs/latest.log`)
+- Optional **stderr redirection** to a separate error log
 - Thread-safe via `pthread_mutex`
-- Custom runtime and compile-time assertions (`ASSERT`, `BUILD_ASSERT`)
+- Custom runtime and compile-time assertions:
+  - `ASSERT(expr, ...)`
+  - `BUILD_ASSERT(cond, msg)`
 
 ---
 
 # Getting Started
 
-## 1) Clone
+## 1) Clone the repository
 
 ```sh
 git clone https://github.com/abnore/BlackBox.git
 cd BlackBox
 ```
 
-## 2) (Optional) Install system-wide on macOS
+---
 
-### Step 1 — Build the shared library (.dylib)
+## 2) Build & Install (macOS)
 
-```sh
-clang -dynamiclib -fPIC -o libblackbox.dylib blackbox.c
-```
+BlackBox ships with a minimal Makefile that builds a shared library and can optionally install it system-wide.
 
-### Step 2 — Set the install name (required on macOS)
+### 2.1 — Build locally
 
 ```sh
-sudo install_name_tool -id /usr/local/lib/libblackbox.dylib libblackbox.dylib
+make
 ```
 
-### Step 3 — Install the header and library globally
+This creates:
+
+- `libblackbox.dylib`
+
+To use the library locally, include the header from the repo:
+
+```c
+#include "blackbox.h"
+```
+
+Compile your program with:
 
 ```sh
-sudo cp blackbox.h /usr/local/include/
-sudo cp libblackbox.dylib /usr/local/lib/
+clang main.c -L. -lblackbox -o main
 ```
 
-### Uninstall
+Where:
 
-```sh
-sudo rm /usr/local/include/blackbox.h
-sudo rm /usr/local/lib/libblackbox.dylib
-```
+- `-L.` tells the linker to search the current directory
+- `-lblackbox` links against `libblackbox.dylib`
 
 ---
 
-# Usage (Full Example)
+### 2.2 — Clean local build
+
+To remove the locally-built shared library:
+
+```sh
+make clean
+```
+
+This removes:
+
+- `libblackbox.dylib`
+
+---
+
+### 2.3 — Install system-wide
+
+To install into `/usr/local`:
+
+```sh
+make install
+```
+
+This installs:
+
+- `blackbox.h` -> `/usr/local/include/`
+- `libblackbox.dylib` -> `/usr/local/lib/`
+
+After installation, you can use BlackBox in **any** C project on your system:
 
 ```c
 #include <blackbox.h>
-// #include "blackbox.h"  // if using locally in your project
+```
+
+Compile with:
+
+```sh
+clang main.c -lblackbox -o main
+```
+
+No `-L.` needed — `/usr/local/lib` is in the default macOS search path.
+
+---
+
+### 2.4 — Uninstall
+
+```sh
+make uninstall
+```
+
+This removes:
+
+- `/usr/local/include/blackbox.h`
+- `/usr/local/lib/libblackbox.dylib`
+
+---
+
+# Usage Example
+
+```c
+#include <blackbox.h>
 
 int main(void) {
-    // Log only to the terminal (color enabled if supported)
-    init_log(NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL);
+    // LOG_DEFAULT will expand into: NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL;
+    init_log(LOG_DEFAULT);
 
-    // Example: write logs to files instead of the terminal
-    // init_log(LOG, NO_COLORS, STDERR_TO_TERMINAL);
+    // Examples written out:
+    // init_log(LOG, NO_COLORS, STDERR_TO_TERMINAL); // Log to file
+    // init_log(LOG, NO_COLORS, STDERR_TO_LOG);      // Redirect stderr
 
-    // Example: redirect stderr to its own file (error-*.log)
-    // init_log(LOG, NO_COLORS, STDERR_TO_LOG);
-
-    FATAL("Unrecoverable error; program will abort after this");
+    FATAL("Unrecoverable error (this does NOT abort, only logs it)");
     ERROR("Recoverable error; operation failed");
     WARN("Non-fatal anomaly");
     INFO("General status / progress");
     DEBUG("Developer debug information (x=%d)", 42);
     TRACE("Verbose internal tracing");
 
-    // Example assertion (this WILL abort)
-    // ASSERT(0 == 1, "This will abort with a FATAL log");
+    // Example assertion (this WILL abort):
+    // ASSERT(ptr != NULL, "ptr must not be NULL (id=%d)", id);
 
     shutdown_log();
     return 0;
 }
 ```
 
-Compile:
+Compile (after `make install`):
 
 ```sh
-clang main.c -lblackbox -pthread -o main
+clang main.c -lblackbox -o main
 ```
 
 > [!NOTE]
 > BlackBox uses pthread mutexes internally.
-> On macOS this works **even without** `-pthread` (libSystem includes pthreads),
-> but **adding `-pthread` is recommended** for correctness and portability.
+> On macOS, pthreads are provided by **libSystem**, so `-pthread` is not required.
 
 ---
 
-# Optional Runtime Controls
+# Runtime Controls
 
-BlackBox provides small helper functions for dynamic configuration:
+### Helper functions
 
 ```c
-log_set_color_output(bool enabled);     // Force-enable or disable ANSI colors
-log_enable_level(log_level lvl);        // Enable a log level at runtime
-log_disable_level(log_level lvl);       // Disable a log level
-log_level_is_enabled(log_level lvl);    // Query if a level is enabled
+log_set_color_output(bool enabled);
+log_enable_level(log_level lvl);
+log_disable_level(log_level lvl);
+log_level_is_enabled(log_level lvl);
 ```
 
-Examples:
+### Example
 
 ```c
-log_set_color_output(true);            // force colors on
-log_enable_level(LOG_LEVEL_TRACE);     // enable TRACE dynamically
-log_disable_level(LOG_LEVEL_DEBUG);    // disable DEBUG
+log_set_color_output(true);
+log_enable_level(LOG_LEVEL_TRACE);
+log_disable_level(LOG_LEVEL_DEBUG);
+
 if (log_level_is_enabled(LOG_LEVEL_TRACE)) {
     TRACE("Trace is enabled!");
 }
@@ -139,20 +203,23 @@ Control verbosity at runtime:
 LOG_LEVELS=+DEBUG,-TRACE ./your_app
 ```
 
-Syntax:
+### Syntax
 
-- `ALL` – enable all levels
-- `NONE` – disable all
-- `+LEVEL` / `-LEVEL` – enable or disable
-- Comma-separated, case-insensitive
-- First `+LEVEL` clears all levels unless ALL or NONE is used
+| Token             | Meaning               |
+|-------------------|-----------------------|
+| `ALL`             | Enable all levels     |
+| `NONE`            | Disable all levels    |
+| `+LEVEL`          | Enable a level        |
+| `-LEVEL`          | Disable a level       |
+| comma-separated   | Multiple operations   |
+| case-insensitive  | `debug` == `DEBUG`    |
 
-Examples:
+### Examples
 
 ```sh
 LOG_LEVELS=ALL ./app
 LOG_LEVELS=-debug,-trace ./app
-LOG_LEVELS=+info,+debug ./app
+LOG_LEVELS=+warn,+error ./app
 LOG_LEVELS=NONE,+fatal ./app
 ```
 
@@ -161,24 +228,20 @@ LOG_LEVELS=NONE,+fatal ./app
 # Assertions
 
 ```c
-// Logs a FATAL line with file/line and message, then aborts.
 ASSERT(ptr != NULL, "ptr must not be NULL (id=%d)", id);
-
-// Compile-time assertion
-BUILD_ASSERT(sizeof(MyHdr) == 32, "MyHdr must be 32 bytes");
+BUILD_ASSERT(sizeof(Header) == 64, "Header must be 64 bytes");
 ```
 
 ---
 
-# Example Makefile
-*(Optional — only if writing your own program with BlackBox installed system-wide)*
+# Example Makefile (project using BlackBox)
 
 ```makefile
 .PHONY: all run run-info run-debug run-fatal clean
 
 CC      = clang
-CFLAGS  = -Wall -Wextra -O2 -I.
-LDFLAGS = -pthread -lblackbox
+CFLAGS  = -Wall -Wextra -O2
+LDFLAGS = -lblackbox
 
 SRC = src/main.c
 OBJ = $(SRC:.c=.o)
@@ -196,30 +259,39 @@ run:
 	@echo "Running with LOG_LEVELS='$(LOG_LEVELS)'..."
 	@LOG_LEVELS="$(LOG_LEVELS)" ./$(OUT)
 
-clean:
-	rm -f $(OBJ) $(OUT)
-
 run-info:  ; $(MAKE) run LOG_LEVELS=+info,+warn
 run-debug: ; $(MAKE) run LOG_LEVELS=+debug,-trace
 run-fatal: ; $(MAKE) run LOG_LEVELS=NONE,+fatal
+
+clean:
+	rm -f $(OBJ) $(OUT)
 ```
 
 ---
 
 # Color Behavior
 
-- `LOG_COLORS` enables ANSI colors only when stdout is a TTY
-- File logs are always plain text
-- `log_set_color_output(bool)` overrides automatic behavior
+- `LOG_COLORS` enables ANSI colors only when `stdout` is a TTY
+- File logs never contain color escape codes
+- `log_set_color_output()` overrides auto-detection
 
 ---
 
 # Platform
 
 - Target: **macOS**
-- Depends on: `pthread`, `unistd`, `sys/stat`, `libgen`, `mach-o/dyld.h`
+- Depends on:
+  - `pthread`
+  - `unistd.h`
+  - `sys/stat.h`
+  - `libgen.h`
+  - `mach-o/dyld.h`
 
 > Not cross-platform as-is.
-> Linux/Windows ports require replacing Mach-O path handling and some FS logic.
+> A Linux/Windows port would require replacing Mach-O path handling and parts of the filesystem logic.
 
 ---
+
+# License
+
+BlackBox is released under **The Unlicense** — dedicated to the public domain.
