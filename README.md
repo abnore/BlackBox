@@ -158,12 +158,6 @@ int main(void) {
 }
 ```
 
-Compile (after `make install`):
-
-```sh
-clang main.c -lblackbox -o main
-```
-
 > [!NOTE]
 > BlackBox uses pthread mutexes internally.
 > On macOS, pthreads are provided by **libSystem**, so `-pthread` is not required.
@@ -237,34 +231,44 @@ BUILD_ASSERT(sizeof(Header) == 64, "Header must be 64 bytes");
 # Example Makefile (project using BlackBox)
 
 ```makefile
-.PHONY: all run run-info run-debug run-fatal clean
-
+# Example Makefile For BlackBox
 CC      = clang
-CFLAGS  = -Wall -Wextra -O2
 LDFLAGS = -lblackbox
 
-SRC = src/main.c
-OBJ = $(SRC:.c=.o)
-OUT = bin/test
+SRC = example.c
+DIR = bin
+OUT = test
+BIN = $(DIR)/$(OUT)
 
 LOG_LEVELS ?= ALL
 
-all: $(OUT)
+all: $(BIN)
+$(BIN): $(SRC)
+	@mkdir -p $(DIR)
+	@echo "Building example -> $(BIN)"
+	@$(CC) $^ $(LDFLAGS) -o $@
+	@echo
+	@echo "Now run:"
+	@echo " - make run "
+	@echo " - make run-info "
+	@echo " - make run-debug "
+	@echo " - make run-fatal "
+	@echo
+	@echo "And see without re-compiling, levels are run-time controlled"
+run: $(BIN)
+	@echo "Running with LOG_LEVELS='$(LOG_LEVELS)'"
+	@LOG_LEVELS="$(LOG_LEVELS)" ./$(BIN)
 
-$(OUT): $(OBJ)
-	@mkdir -p $(dir $(OUT))
-	$(CC) $(OBJ) $(LDFLAGS) -o $(OUT)
-
-run:
-	@echo "Running with LOG_LEVELS='$(LOG_LEVELS)'..."
-	@LOG_LEVELS="$(LOG_LEVELS)" ./$(OUT)
-
-run-info:  ; $(MAKE) run LOG_LEVELS=+info,+warn
-run-debug: ; $(MAKE) run LOG_LEVELS=+debug,-trace
-run-fatal: ; $(MAKE) run LOG_LEVELS=NONE,+fatal
+run-info:  ;  @$(MAKE) run LOG_LEVELS=+info,+warn
+run-debug: ;  @$(MAKE) run LOG_LEVELS=+debug,-trace
+run-fatal: ;  @$(MAKE) run LOG_LEVELS=+fatal
 
 clean:
-	rm -f $(OBJ) $(OUT)
+	@echo "Cleaning bin/"
+	@rm -f $(BIN)
+	@rmdir $(DIR) 2>/dev/null || true
+
+.PHONY: all run run-info run-debug run-fatal clean
 ```
 
 ---
