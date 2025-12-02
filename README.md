@@ -18,7 +18,7 @@
 ## Features
 
 - Zero external dependencies and extremely easy to integrate
-- Pure C (`blackbox.h` / `src/blackbox.c`)
+- Pure C
 - Color-coded terminal output (TTY / ANSI-aware)
 - Runtime log-level control via `LOG_LEVELS=...`
 - Optional **file logging** (`logs/<timestamp>.log` + `logs/latest.log`)
