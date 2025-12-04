@@ -80,7 +80,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
 
     if (logger_initialized) {
         UNLOCK();
-        fprintf(stderr, "[LOGGER] init_log() called more than once — skipping\n");
+        fprintf(stderr, "[BLACKBOX] init_log() called more than once —> skipping\n");
         return LOG_ALREADY_INIT;
     }
     logger_initialized = true;
@@ -120,7 +120,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
 
     log_output_stream = fopen(log_path, "w");
     if (!log_output_stream) {
-        fprintf(stderr, "[LOGGER ERROR] Failed to open log file: %s\n", log_path);
+        fprintf(stderr, "[BLACKBOX ERROR] Failed to open log file: %s\n", log_path);
         UNLOCK();
         return LOG_ERROR;
     }
@@ -169,6 +169,25 @@ void log_set_color_output(bool enabled)
 
 void log_output_ext(log_level level, const char* file, int line, const char* func, const char* msg, ...)
 {
+    if (!logger_initialized) {
+        static bool complained = false;
+        if (!complained) {
+            fprintf(stderr,
+                "[BLACKBOX ERROR] => Logging attempted before init_log().\n"
+                "\n"
+                "    BlackBox must be initialized before any INFO/DEBUG/etc calls.\n"
+                "\n"
+                "    hint: Call init_log(LOG_DEFAULT); early in main(), before use.\n"
+                "\n"
+                "    Example:\n"
+                "        int main() {\n"
+                "            init_log(LOG_DEFAULT);\n"
+                "            // ... your code\n"
+                "        }\n");
+            complained = true;
+        }
+        return;
+    }
     // Quick filter to skip if this level is off
     if (!(log_levels_enabled & level)) return;
 
