@@ -24,30 +24,32 @@
 //=============================================================
 // Internal state & synchronization
 //=============================================================
-//
+
 static bool logger_initialized = false;  // Prevent multiple init_log() calls
-static void configure_log_levels_from_env(void); // Internal only — parsed by init_log()
-                                                                 //
-static pthread_mutex_t logger_mutex = PTHREAD_MUTEX_INITIALIZER; // Ensures thread-safe logging
+static void configure_log_levels_from_env(void); // Internal only
+
+// Ensures thread-safe logging
+static pthread_mutex_t logger_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define LOCK()   pthread_mutex_lock(&logger_mutex)
 #define UNLOCK() pthread_mutex_unlock(&logger_mutex)
 
-FILE* log_output_stream = NULL;                  // Destination: stdout, stderr, or file
-uint32_t log_levels_enabled = LOG_LEVEL_ALL;     // Bitmask for enabled log levels
+static FILE* log_output_stream = NULL;    // Destination: stdout, stderr, or file
+static uint32_t log_levels_enabled = LOG_LEVEL_ALL;   // Bitmask for log levels
 
-static bool log_colors_enabled = true;           // Whether colors are active
-static bool log_color_auto = true;               // True = auto-detect from TTY, false = forced
+static bool log_colors_enabled = true; // Whether colors are active
+static bool log_color_auto = true;  // True = auto-detect from TTY, false = forced
 
 // String labels and color codes for each level
 static const char* log_dir = "logs";
-static const char* level_strings[] = { "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE" };
+static const char* level_strings[] = {
+    "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE" };
 static const char* level_colors[] = {
-    "\033[1;31m", // Bright red
-    "\033[0;31m", // Red
-    "\033[0;33m", // Yellow
-    "\033[0;32m", // Green
-    "\033[0;36m", // Cyan
-    "\033[0;90m"  // Gray
+    "\033[1;31m", // Bright red - FATAL
+    "\033[0;31m", // Red        - ERROR
+    "\033[0;33m", // Yellow     - WARN
+    "\033[0;32m", // Green      - INFO
+    "\033[0;36m", // Cyan       - DEBUG
+    "\033[0;90m"  // Gray       - TRACE
 };
 static const char* color_reset = "\033[0m";
 
@@ -74,13 +76,14 @@ static const char *get_program_name(void)
 
 // Initializes the logger system.
 // Only runs once safely even across threads.
-log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode stderr_behavior)
+log_type init_log(log_mode enable_log,
+            color_mode enable_colors, stderr_mode stderr_behavior)
 {
     LOCK();
 
     if (logger_initialized) {
         UNLOCK();
-        fprintf(stderr, "[BLACKBOX] init_log() called more than once —> skipping\n");
+        fprintf(stderr, "[BLACKBOX] init_log() called already —> skipping\n");
         return LOG_ALREADY_INIT;
     }
     logger_initialized = true;
@@ -93,7 +96,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
         char err_path[256];
         snprintf(err_path, sizeof(err_path), "%s/error-", log_dir);
         size_t len = strlen(err_path);
-        get_log_time(err_path + len, sizeof(err_path) - len, "%Y-%m-%d_%H-%M-%S.log");
+        get_log_time(err_path + len, sizeof(err_path)-len, "%Y-%m-%d_%H-%M-%S.log");
         freopen(err_path, "w", stderr);
     }
 
@@ -129,7 +132,7 @@ log_type init_log(log_mode enable_log, color_mode enable_colors, stderr_mode std
     char symlink_path[256];
     snprintf(symlink_path, sizeof(symlink_path), "%s/latest.log", log_dir);
     unlink(symlink_path);
-    symlink(log_path + strlen(log_dir) + 1, symlink_path);  // point to relative target
+    symlink(log_path + strlen(log_dir) + 1, symlink_path);
 
     log_colors_enabled = false;
 
@@ -156,6 +159,27 @@ void shutdown_log(void)
     UNLOCK();
 }
 
+void log_enable_level(log_level level)
+{
+    LOCK();
+    log_levels_enabled |= level;
+    UNLOCK();
+}
+
+void log_disable_level(log_level level)
+{
+    LOCK();
+    log_levels_enabled &= ~level;
+    UNLOCK();
+}
+
+bool log_level_is_enabled(log_level level)
+{
+    LOCK();
+    bool enabled = (log_levels_enabled & level) != 0;
+    UNLOCK();
+    return enabled;
+}
 // Manually enable/disable color output
 void log_set_color_output(bool enabled)
 {
@@ -167,7 +191,8 @@ void log_set_color_output(bool enabled)
 // Core logging function
 //=============================================================
 
-void log_output_ext(log_level level, const char* file, int line, const char* func, const char* msg, ...)
+void log_output_ext(log_level level, const char* file,
+        int line, const char* func, const char* msg, ...)
 {
     if (!logger_initialized) {
         static bool complained = false;
@@ -239,7 +264,8 @@ void log_output_ext(log_level level, const char* file, int line, const char* fun
 // Assertion support (crashing)
 //=============================================================
 
-void report_assertion_failure(const char* expression, const char* file, int line, const char* fmt, ...)
+void report_assertion_failure(const char* expression, const char* file,
+        int line, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -247,7 +273,8 @@ void report_assertion_failure(const char* expression, const char* file, int line
     char msg[2048];
     vsnprintf(msg, sizeof(msg), fmt, args);
 
-    log_output_ext(LOG_LEVEL_FATAL, file, line, "ASSERT", "Assertion failed: %s — %s", expression, msg);
+    log_output_ext(LOG_LEVEL_FATAL, file, line,
+            "ASSERT", "Assertion failed: %s — %s", expression, msg);
 
     va_end(args);
 }
@@ -294,7 +321,7 @@ void configure_log_levels_from_env(void)
             else if (strcasecmp(token, "DEBUG") == 0)  level_bit = LOG_LEVEL_DEBUG;
             else if (strcasecmp(token, "TRACE") == 0)  level_bit = LOG_LEVEL_TRACE;
             else {
-                fprintf(stderr, "[LOGGER] Unknown log level: '%s'\n", token);
+                fprintf(stderr, "[BLACKBOX ERROR] Unknown log level: '%s'\n", token);
                 token = strtok(NULL, ",");
                 continue;
             }

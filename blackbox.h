@@ -13,23 +13,23 @@ extern "C" {
 //========================================
 // Types
 //========================================
-typedef enum { NO_LOG = 0, LOG = 1 } log_mode;
-typedef enum { NO_COLORS = 0, LOG_COLORS = 1 } color_mode;
-typedef enum { STDERR_TO_TERMINAL = 0, STDERR_TO_LOG = 1 } stderr_mode;
+typedef enum { NO_LOG,              LOG           } log_mode;
+typedef enum { NO_COLORS,           LOG_COLORS    } color_mode;
+typedef enum { STDERR_TO_TERMINAL,  STDERR_TO_LOG } stderr_mode;
 
-#define LOG_DEFAULT         NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL
+#define LOG_DEFAULT          NO_LOG, LOG_COLORS, STDERR_TO_TERMINAL
 
 /**
  * @brief Defines the severity level of a log message.
  */
 typedef enum {
-    LOG_LEVEL_NONE  = 0,             /**< No logging */
-    LOG_LEVEL_FATAL = 1 << 0,        /**< Fatal error, program cannot continue */
-    LOG_LEVEL_ERROR = 1 << 1,        /**< Recoverable error, something went wrong */
-    LOG_LEVEL_WARN  = 1 << 2,        /**< Warning, something unexpected but non-fatal */
-    LOG_LEVEL_INFO  = 1 << 3,        /**< General informational messages */
-    LOG_LEVEL_DEBUG = 1 << 4,        /**< Debugging information for developers */
-    LOG_LEVEL_TRACE = 1 << 5,        /**< Fine-grained tracing details */
+    LOG_LEVEL_NONE  = 0,        /**< No logging */
+    LOG_LEVEL_FATAL = 1 << 0,   /**< Fatal error, program cannot continue */
+    LOG_LEVEL_ERROR = 1 << 1,   /**< Recoverable error, something went wrong */
+    LOG_LEVEL_WARN  = 1 << 2,   /**< Warning, something unexpected but non-fatal */
+    LOG_LEVEL_INFO  = 1 << 3,   /**< General informational messages */
+    LOG_LEVEL_DEBUG = 1 << 4,   /**< Debugging information for developers */
+    LOG_LEVEL_TRACE = 1 << 5,   /**< Fine-grained tracing details */
 
     LOG_LEVEL_ALL = LOG_LEVEL_FATAL |
                     LOG_LEVEL_ERROR |
@@ -48,19 +48,6 @@ typedef enum {
     LOG_STDOUT,         /**< Logging to standard output */
     LOG_ALREADY_INIT    /**< init_log was already called */
 } log_type;
-
-//========================================
-// Runtime Log Configuration
-//========================================
-
-/**
- * @brief Bitmask of enabled log levels.
- *
- * This is modified at runtime through the environment variable (LOG_LEVELS)
- * or manually via the API (log_enable_level, log_disable_level).
- */
-
-extern uint32_t log_levels_enabled;
 
 
 //========================================
@@ -107,17 +94,9 @@ void log_set_color_output(bool enabled);
 
 /* Runtime log level control
  * ------------------------------------------------------- */
-static inline void log_enable_level(log_level level) {
-    log_levels_enabled |= level;
-}
-
-static inline void log_disable_level(log_level level) {
-    log_levels_enabled &= ~level;
-}
-
-static inline bool log_level_is_enabled(log_level level) {
-    return (log_levels_enabled & level) != 0;
-}
+void log_enable_level(log_level level);
+void log_disable_level(log_level level);
+bool log_level_is_enabled(log_level level);
 /* ------------------------------------------------------- */
 
 // Log output (wrapped by macros)
