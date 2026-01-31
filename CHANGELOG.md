@@ -1,4 +1,6 @@
 # Changelog
+## 1.1.1
+- Bug fix where `stdlib.h` was not included in header file, not exposing `abort()`
 
 ## 1.1.0
 - Fixed accidental exposure of internal log level mask

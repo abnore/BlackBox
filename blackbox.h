@@ -5,6 +5,7 @@
 #include <stdint.h>   // uint32_t
 #include <stdbool.h>  // bool
 #include <stdio.h>    // FILE, needed in function signatures
+#include <stdlib.h>   // abort()
 
 #ifdef __cplusplus
 extern "C" {
