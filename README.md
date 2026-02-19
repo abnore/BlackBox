@@ -2,7 +2,6 @@
   <img src="https://github.com/user-attachments/assets/00e305bc-7d20-4af1-a3e5-c794c76b60b5" width="600" alt="BlackBox Logo" />
 </p>
 
-[![macOS Build](https://github.com/abnore/BlackBox/actions/workflows/macos-build.yml/badge.svg)](https://github.com/abnore/BlackBox/actions/workflows/macos-build.yml)
 [![Release](https://img.shields.io/github/release/abnore/BlackBox.svg)](https://github.com/abnore/BlackBox/releases/latest)
 
 # BlackBox
