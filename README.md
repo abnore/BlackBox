@@ -7,7 +7,8 @@
 
 # BlackBox
 
-**BlackBox** is a fast, minimal logging library for C — inspired by aircraft flight recorders: log everything.
+**BlackBox** is a fast, minimal logging library for C.
+Name is inspired by aircraft flight recorders, logging everything.
 
 > [!NOTE]
 > Built and tested exclusively on **macOS (POSIX)**.
@@ -16,7 +17,6 @@
 ---
 
 ## Features
-
 - Zero external dependencies and extremely easy to integrate
 - Pure C
 - Color-coded terminal output (TTY / ANSI-aware)
@@ -43,7 +43,8 @@ cd BlackBox
 
 ## 2) Build & Install (macOS)
 
-BlackBox ships with a minimal Makefile that builds a shared library and can optionally install it system-wide.
+BlackBox ships with a minimal Makefile that builds a shared library and can
+optionally install it system-wide.
 
 ### 2.1 — Build locally
 
@@ -292,10 +293,10 @@ clean:
   - `mach-o/dyld.h`
 
 > Not cross-platform as-is.
-> A Linux/Windows port would require replacing Mach-O path handling and parts of the filesystem logic.
+> A Linux/Windows port would require replacing Mach-O path handling
+> and parts of the filesystem logic.
 
 ---
 
 # License
-
 BlackBox is released under **The Unlicense** — dedicated to the public domain.
